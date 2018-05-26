@@ -30,14 +30,11 @@ namespace 数据抓取
 
             panel2.Controls.Add(webBrowser1);
             webBrowser1.Dock = DockStyle.Fill;
-            panel3.Controls.Add(webBrowser2);
-            webBrowser2.Dock = DockStyle.Fill;
 
             InitBrowser();
 
         }
         ChromiumWebBrowser webBrowser1 = new ChromiumWebBrowser("");
-        ChromiumWebBrowser webBrowser2 = new ChromiumWebBrowser("");
 
         public void InitBrowser()
         {
@@ -49,13 +46,6 @@ namespace 数据抓取
                 bset.WebSecurity = CefState.Disabled;
                 webBrowser1.LifeSpanHandler = new OpenPageSelf(this);
                 webBrowser1.BrowserSettings = bset;
-
-                BrowserSettings bset2 = new BrowserSettings();
-                bset.Plugins = CefState.Enabled;
-
-                //关于跨域限制
-                bset2.WebSecurity = CefState.Disabled;
-                webBrowser2.BrowserSettings = bset2;
 
 
             }
@@ -114,58 +104,125 @@ namespace 数据抓取
             using (TextWriter writer = new StreamWriter(fs, Encoding.GetEncoding("GB2312")))
             {
                 var csv = new CsvWriter(writer);
-                获取连接(strsource, csv);
+                //获取连接(strsource, csv);
             }
 
         }
-
-        private void 获取连接(string strsource, CsvWriter csv)
+        IWebElement FindElement(IWebDriver _driver, string xpath)
         {
+            try
+            {
+                return _driver.FindElement(By.XPath(xpath));
+            }
+            catch (Exception)
+            {
+
+            }
+            return null;
+        }
+        private void 获取连接(string uri, CsvWriter csv)
+        {
+            var arr = uri.Split(new char[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+            string id = "";
+            id = GetIdByUri(arr);
+            string strsource = driver.PageSource;
             HtmlAgilityPack.HtmlDocument htmlDocument = new HtmlAgilityPack.HtmlDocument();
             htmlDocument.LoadHtml(strsource);
-
 
             var html = htmlDocument.DocumentNode;
             //标题
             var title = html.SelectSingleNode("//*[@id='J_Title']/h3");
-            csv.WriteField(title);
-            string strtitle = title.GetAttributeValue("data-title","");
-            csv.WriteField(strtitle);
+            string strtitle = title.GetAttributeValue("data-title", "");
 
-            //MessageBox.Show(strtitle);
             //累计评论
             var comment = html.SelectSingleNode("//*[@id='J_RateCounter']").InnerText;
             Console.WriteLine("累计评论 {0}", comment);
-            csv.WriteField(comment);
+            //csv.WriteField(comment);
 
             var 标题图片 = html.SelectNodes("//*[@id='J_UlThumb']/li/div/a/img");
+            List<string> lst标题图片 = new List<string>();
             StringBuilder sb = new StringBuilder();
             foreach (var item in 标题图片)
             {
-                Console.WriteLine(item.InnerText);
-                sb.AppendLine(item.GetAttributeValue("src", ""));
+                //Console.WriteLine(item.InnerText);
+                lst标题图片.Add(item.GetAttributeValue("src"));
+                //sb.AppendLine(item.GetAttributeValue("src", ""));
             }
-            csv.WriteField(sb.ToString().TrimEnd());
+            //csv.WriteField(sb.ToString().TrimEnd());
             var 快递 = html.SelectSingleNode("//*[@id='J_WlServiceTitle']").InnerText;
             Console.WriteLine(快递);
-            csv.WriteField(快递);
+            //csv.WriteField(快递);
 
-            var 分类 = html.SelectNodes("//*[@id='J_isku']/div/dl[1]/dd/ul/li");
+            List<string> lst分类 = new List<string>();
             sb.Clear();
+            //var sku_elements = driver.FindElements(By.CssSelector("#J_isku > div.tb-skin > dl.J_Prop tb-prop tb-clear  J_Prop_Color > dd > ui.J_TSaleProp tb-img tb-clearfix > li"));
+            var 分类 = html.SelectNodes("//*[@id='J_isku']/div/dl[1]/dd/ul/li/a");
             foreach (var item in 分类)
             {
-                var sku = item.SelectSingleNode("./a/span").InnerText;
-                Console.WriteLine(sku);
-                sb.AppendLine(sku);
+                //item.XPath
+                //var skus= wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#J_isku > div.tb-skin > dl.J_Prop tb-prop tb-clear  J_Prop_Color > dd > ui.J_TSaleProp tb-img tb-clearfix > li")); });
+                var pic = item.GetAttributeValue("style");
+                if (!string.IsNullOrEmpty(pic))
+                {
+                    var tmparr = pic.Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (tmparr.Length >= 2)
+                    {
+                        pic = tmparr[1];
+                    }
+                }
+                var sku = item.SelectSingleNode("./span").InnerText;
+                var sku_element = driver.FindElement(By.XPath(item.XPath));
+                string price = "";
+                if (sku_element != null)
+                {
+                    sku_element.Click();
+                    Thread.Sleep(100);
+                    var priceele = FindElement(driver, "//*[@id='J_PromoPriceNum']");
+                    if (priceele == null)
+                    {
+                        priceele = FindElement(driver, "//*[@id='J_StrPrice']/em[2]");
+                    }
+                    if (priceele != null)
+                    {
+                        price = priceele.Text;
+                    }
+                }
+                lst分类.Add(string.Format("{0}|{1}|{2}", price, sku, pic));
+                //sb.AppendLine(string.Format("{0}|{1}|{2}", price, sku, pic));
+
             }
-            csv.WriteField(sb.ToString().TrimEnd());
-            
+            //csv.WriteField(sb.ToString().TrimEnd());
+
+            //csv.WriteField(sb.ToString());
+            //var sku_elements = driver.FindElements(By.XPath("//*[@id='J_isku']/div/dl[1]/dd/ul/li/a"));
+            //foreach (var item in sku_elements)
+            //{
+            //    item.Click();
+            //    string txt = "";
+            //    string price = "";
+            //    string picurl = "";
+            //    var txtele = item.FindElement(By.XPath("./span"));
+            //    if (txtele != null)
+            //    {
+            //        txt = txtele.Text;
+            //        picurl = item.GetAttribute("style");
+            //    }
+            //    var priceele = driver.FindElement(By.XPath("//*[@id='J_PromoPriceNum']"));
+            //    if (priceele != null)
+            //    {
+            //        price = priceele.Text;
+            //    }
+            //    Thread.Sleep(100);
+            //}
+
+
             var 详情 = html.SelectNodes("//*[@id='J_DivItemDesc']/p/img");
-            if(详情==null)
+            List<string> lst详情 = new List<string>();
+            if (详情 == null)
             {
                 详情 = html.SelectNodes("//*[@id='J_DivItemDesc']/div/div/img");
             }
-            if(详情!=null)
+            if (详情 != null)
             {
                 //var 图片 = html.SelectNodes("//*[@id='J_DivItemDesc']/p/strong/img");
                 sb.Clear();
@@ -179,46 +236,95 @@ namespace 数据抓取
                         var tp = pic.GetAttributeValue("src");
                         Console.WriteLine(tp);
                         sb.AppendLine(tp);
+                        lst详情.Add(tp);
                     }
                 }
             }
-            csv.WriteField(sb.ToString().TrimEnd());
-            csv.NextRecord();
+            //csv.WriteField(sb.ToString().TrimEnd());
+            WriteCsv(csv, id, uri, strtitle, comment, lst标题图片, 快递, lst分类, lst详情);
         }
 
-        private void 获取天猫连接(string strsource, CsvWriter csv)
+        private string GetIdByUri(string[] arr)
         {
+            string id = "";
+            foreach (var item in arr)
+            {
+                if (item.IndexOf("id=") == 0)
+                {
+                    id = item.Substring(3);
+                }
+            }
+            return id;
+        }
+
+        private void WriteCsv(CsvWriter csv, string id, string uri, string title, string commentnum, List<string> 所有标题图片, string 快递情况, List<string> price_sku_tupians, List<string> 详情)
+        {
+            csv.WriteField(id);
+            csv.WriteField(uri);
+            csv.WriteField(title);
+            csv.WriteField(commentnum);
+            StringBuilder sb = new StringBuilder();
+            foreach (var item in 所有标题图片)
+            {
+                sb.AppendLine(item);
+            }
+            csv.WriteField(sb.ToString());
+            csv.WriteField(快递情况);
+            sb.Clear();
+            foreach (var item in price_sku_tupians)
+            {
+                sb.AppendLine(item);
+            }
+            csv.WriteField(sb.ToString());
+            sb.Clear();
+            foreach (var item in 详情)
+            {
+                sb.AppendLine(item);
+            }
+            csv.WriteField(sb.ToString());
+            csv.NextRecord();
+
+        }
+        private void 获取天猫连接(string uri, CsvWriter csv)
+        {
+            var arr = uri.Split(new char[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+            string id = "";
+            id = GetIdByUri(arr);
+            string strsource = driver.PageSource;
             HtmlAgilityPack.HtmlDocument htmlDocument = new HtmlAgilityPack.HtmlDocument();
             htmlDocument.LoadHtml(strsource);
 
 
             var html = htmlDocument.DocumentNode;
-            
+
             //标题
             var title = html.SelectSingleNode("//*[@id='J_DetailMeta']/div[1]/div[1]/div/div[1]/h1");
-            csv.WriteField(title.InnerText.Trim());
+            string strtitle = title?.InnerText?.Trim();
+            //csv.WriteField(title.InnerText.Trim());
             //string strtitle = title.GetAttributeValue("data-title");
             //csv.WriteField(strtitle);
 
-            //MessageBox.Show(strtitle);
             //累计评论
             var comment = html.SelectSingleNode("//*[@id='J_ItemRates']/div/span[2]").InnerText;
             Console.WriteLine("累计评论 {0}", comment);
-            csv.WriteField(comment);
+            //csv.WriteField(comment);
             //*[@id="J_UlThumb"]/li[2]/a/img
             var 标题图片 = html.SelectNodes("//*[@id='J_UlThumb']/li/a/img");
+            List<string> lst标题图片 = new List<string>();
             StringBuilder sb = new StringBuilder();
             foreach (var item in 标题图片)
             {
                 Console.WriteLine(item.InnerText);
-                sb.AppendLine(item.GetAttributeValue("src"));
+                lst标题图片.Add(item.GetAttributeValue("src"));
+                //sb.AppendLine(item.GetAttributeValue("src"));
             }
-            csv.WriteField(sb.ToString().TrimEnd());
+            //csv.WriteField(sb.ToString().TrimEnd());
             var 快递 = html.SelectSingleNode("//*[@id='J_PostageToggleCont']/p").InnerText;
-            Console.WriteLine(快递);
-            csv.WriteField(快递);
+            //Console.WriteLine(快递);
+            //csv.WriteField(快递);
 
             var 分类 = html.SelectNodes("//*[@id='J_DetailMeta']/div[1]/div[1]/div/div[4]/div/div/dl[1]/dd/ul/li");
+            List<string> lst分类 = new List<string>();
             sb.Clear();
             foreach (var item in 分类)
             {
@@ -226,152 +332,175 @@ namespace 数据抓取
                 var tupian = item.SelectSingleNode("./a").GetAttributeValue("style");
                 if (!string.IsNullOrEmpty(tupian))
                 {
-                    tupian = tupian.Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries)?[0];
-                }
-                sku = string.Format("{0} | {1}", sku, tupian);
+                    var tmparr = tupian.Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+                    if(tmparr.Length>=2)
+                    {
+                        tupian = tmparr[1];
+                    }
 
-                Console.WriteLine(sku);
-                sb.AppendLine(sku);
+                }
+                var sku_element = driver.FindElement(By.XPath(item.XPath));
+                string price = "";
+                if (sku_element != null)
+                {
+                    try
+                    {
+
+                        sku_element.Click();
+                        Thread.Sleep(100);
+                        var priceele = FindElement(driver, "//*[@id='J_PromoPrice']/dd/div/span");
+                        if (priceele == null)
+                        {
+                            priceele = FindElement(driver, "//*[@id='J_StrPrice']/em[2]");
+                        }
+                        if (priceele != null)
+                        {
+                            price = priceele.Text;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+                lst分类.Add(string.Format("{0}|{1}|{2}", price, sku, tupian));
+                //sku = string.Format("{0} | {1}", sku, tupian);
+
+                //Console.WriteLine(sku);
+                //sb.AppendLine(sku);
             }
-            csv.WriteField(sb.ToString().TrimEnd());
+            //csv.WriteField(sb.ToString().TrimEnd());
 
             //*[@id="description"]/div/p/img[1]
+            //*[@id="description"]/div/img[3]
             var 详情 = html.SelectNodes("//*[@id='description']/div/p/img");
+            if(详情==null)
+            {
+                详情 = html.SelectNodes("//*[@id='description']/div/img");
+            }
             //var 图片 = html.SelectNodes("//*[@id='J_DivItemDesc']/p/strong/img");
             sb.Clear();
             //*[@id="J_DivItemDesc"]/p[2]/img[1]
             //*[@id="J_DivItemDesc"]/p[5]/strong/img[1]
+            List<string> lst详情 = new List<string>();
             foreach (var item in 详情)
             {
                 var tp = item.GetAttributeValue("src");
                 Console.WriteLine(tp);
                 sb.AppendLine(tp);
+                lst详情.Add(tp);
             }
-            csv.WriteField(sb.ToString().TrimEnd());
-            csv.NextRecord();
+            //csv.WriteField(sb.ToString().TrimEnd());
+            //csv.NextRecord();
+            WriteCsv(csv, id, uri, strtitle, comment, lst标题图片, 快递, lst分类, lst详情);
         }
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            webBrowser2.Load("www.baidu.com");
         }
 
-        bool first = true;
-        private void LoadUri2(string url)
-        {
-            webBrowser2.Load(url);
-            webBrowser2.Update();
-        }
-        private async void GetSource2()
-        {
-            string source = await webBrowser2.GetSourceAsync();
-
-        }
+        ChromeDriverService service = null;
+        IWebDriver driver = null;
+        WebDriverWait wait = null;
         private void Btngetall_Click(object sender, EventArgs e)
         {
-            var service = ChromeDriverService.CreateDefaultService();
-            service.HideCommandPromptWindow = true; //隐藏 命令窗口  
-            var option = new ChromeOptions();
-            //option.Proxy = proxy;
-
-            //option.AddArgument("disable-infobars"); //隐藏 自动化标题  
-            //option.AddArgument("headless"); //隐藏 chorme浏览器  
-            option.AddArgument("--incognito");//隐身模式  
-
-            IWebDriver driver = new OpenQA.Selenium.Chrome.ChromeDriver(service, option, TimeSpan.FromSeconds(40));
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(10));
-            driver.Url = "https://www.taobao.com";
-            var input = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#q")); });
-            var submit = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#J_TSearchForm > div.search-button > button")); });
-            input.SendKeys("厨具");
-            submit.Click();
-            var total = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#mainsrp-pager > div > div > div > div.total")); });
-            //MessageBox.Show(total.Text);
-            //webBrowser2.Stop();
-            //var browser = new ScrapingBrowser();
-            //browser.Encoding = Encoding.Default;
-            //var html = browser.DownloadString(new Uri("https://s.taobao.com/search?q=%E4%BF%9D%E6%B8%A9%E7%93%B6&imgfile=&js=1&stats_click=search_radio_all%3A1&initiative_id=staobaoz_20180522&ie=utf8&sort=sale-desc"));
-            //var html = browser.DownloadString(new Uri("https://s.taobao.com/search?q=%E4%BF%9D%E6%B8%A9%E7%93%B6&imgfile=&js=1&stats_click=search_radio_all%3A1&initiative_id=staobaoz_20180522&ie=utf8&sort=sale-desc"));
-
-            HttpHelper httphelper = new HttpHelper();
-            HttpItem httpitem = new HttpItem()
-            {
-                Host = "item.taobao.com",
-                URL = "https://s.taobao.com/search?q=%E4%BF%9D%E6%B8%A9%E7%93%B6&imgfile=&js=1&stats_click=search_radio_all%3A1&initiative_id=staobaoz_20180522&ie=utf8&sort=sale-desc",//URL     必需项
-                Encoding = null,//编码格式（utf-8,gb2312,gbk）     可选项 默认类会自动识别
-                //Encoding = Encoding.Default,
-                Method = "get",//URL     可选项 默认为Get
-                Timeout = 100000,//连接超时时间     可选项默认为100000
-                ReadWriteTimeout = 30000,//写入Post数据超时时间     可选项默认为30000
-                IsToLower = false,//得到的HTML代码是否转成小写     可选项默认转小写
-                Cookie = "VIQQXDCajBh0Z%2FDhlFb3RBQz3qm5oFiPql%2Ffnwm4uWKWXPfmvve3nxoWiE0%2B2Nfvalh5rKNnZbMR9PmVkSL41w%3D%3D; t=329be4969020dec9f70977c8ee3b76e0; isg=BJ6eI77NScyjBpx_d6ngPp2z7DQg92HAitly3kgjFuHcazxFse3n6NjCZ_fnyFrx; cna=QP1YE1DovScCAbdfMCb7mQwi; hng=CN%7Czh-CN%7CCNY%7C156; thw=cn; mt=ci%3D-1_1; cookie2=41cc4340e189344c4cb14e53374ca3eb; v=0; _tb_token_=e63ff33d77de0",//字符串Cookie     可选项
-                UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101 Firefox/60.0)",//用户的浏览器类型，版本，操作系统     可选项有默认值
-                Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",//    可选项有默认值
-                //ContentType = "text/html",//返回类型    可选项有默认值
-                //Referer = "http://www.sufeinet.com",//来源URL     可选项
-                //Allowautoredirect = true,//是否根据３０１跳转     可选项
-                //CerPath = "d:\\123.cer",//证书绝对路径     可选项不需要证书时可以不写这个参数
-                //Connectionlimit = 1024,//最大连接数     可选项 默认为1024
-                Postdata = "C:\\PERKYSU_20121129150608_ScrubLog.txt",//Post数据     可选项GET时不需要写
-                PostDataType = PostDataType.FilePath,//默认为传入String类型，也可以设置PostDataType.Byte传入Byte类型数据
-                //ProxyIp = "192.168.1.105：8015",//代理服务器ID 端口可以直接加到后面以：分开就行了    可选项 不需要代理 时可以不设置这三个参数
-                //ProxyPwd = "123456",//代理服务器密码     可选项
-                //ProxyUserName = "administrator",//代理服务器账户名     可选项
-                //ResultType = ResultType.Byte,//返回数据类型，是Byte还是String
-                //PostdataByte = System.Text.Encoding.Default.GetBytes("测试一下"),//如果PostDataType为Byte时要设置本属性的值
-                //CookieCollection = new System.Net.CookieCollection(),//可以直接传一个Cookie集合进来
-            };
-            string strsource = driver.PageSource;
-
-            //webBrowser2.Load("https://s.taobao.com/search?q=%E4%BF%9D%E6%B8%A9%E7%93%B6&imgfile=&js=1&stats_click=search_radio_all%3A1&initiative_id=staobaoz_20180522&ie=utf8&sort=sale-desc");
-            //webBrowser2.Update();
-
+            string keyword = textBox2.Text;
+            if (string.IsNullOrEmpty(keyword)) return;
             SaveFileDialog form = new SaveFileDialog();
             form.Filter = "csv(*.csv)|*.csv";
             if (form.ShowDialog() != DialogResult.OK)
             {
                 return;
             }
+            string filename = form.FileName;
+            获取商品信息(keyword,filename);
+
+        }
+
+        private void 获取商品信息(string keyword,string filename)
+        {
+            InitWebDriver();
+            //所有商品
+            driver.Url = "https://www.taobao.com";
+            var input = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#q")); });
+            var submit = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#J_TSearchForm > div.search-button > button")); });
+            input.SendKeys(keyword);
+            submit.Click();
+            var total = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#mainsrp-pager > div > div > div > div.total ")); });
+
+            string strsource = driver.PageSource;
 
 
-            //string strsource = GetSource2();
             List<string> lst = 从淘宝搜索页获取商品链接(strsource);
-
-            using (FileStream fs = new FileStream(form.FileName, FileMode.Create))
+            this.Invoke(new MethodInvoker(() =>
+            {
+                dataGridView1.DataSource = lst.ToArray();
+            }));
+            using (FileStream fs = new FileStream(filename, FileMode.Create))
             using (TextWriter writer = new StreamWriter(fs, Encoding.GetEncoding("GB2312")))
             using (var csv = new CsvWriter(writer))
             {
                 foreach (var item in lst)
                 {
+                    this.Invoke(new MethodInvoker(() =>
+                    {
+                        foreach (DataGridViewRow row in dataGridView1.Rows)
+                        {
+                            string uri = row.Cells[0].Value?.ToString();
+                            if(item==uri)
+                            {
+                                dataGridView1.CurrentCell = dataGridView1[0, row.Index];
+                            }
+                        }
+                    }));
+
                     //解析淘宝商品搜索页
                     //webBrowser2.Load(item);
                     //webBrowser2.Update();
                     //httpitem.URL = item;
                     //var html = httphelper.GetHtml(httpitem);
                     //driver.Url = item;
-                    driver.Navigate().GoToUrl(string.Format("https://{0}",item));
-                    //将页面滚动条拖到底部
-                    for (int i = 0; i < 10; i++)
-                    {
-                        int row = (i + 1) * 1000;
-                        ((IJavaScriptExecutor)driver).ExecuteScript(string.Format("window.scrollTo(500,{0});", row));
-                        Thread.Sleep(100);
-                    }
-                    //strsource = browser.DownloadString(new Uri(item));
+                    LoadProductUri(item);
                     if (item.Contains("taobao"))
                     {
-                        获取连接(driver.PageSource, csv);
+                        获取连接(item, csv);
                     }
                     else if (item.Contains("tmall"))
                     {
-                        获取天猫连接(driver.PageSource, csv);
+                        获取天猫连接(item, csv);
                     }
                 }
-
             }
-
-            //Console.WriteLine(strsource);
         }
+
+        private void LoadProductUri(string uri)
+        {
+            driver.Navigate().GoToUrl(string.Format("https://{0}", uri));
+            //将页面滚动条拖到底部
+            for (int i = 0; i < 10; i++)
+            {
+                int row = (i + 1) * 2000;
+                ((IJavaScriptExecutor)driver).ExecuteScript(string.Format("window.scrollTo(500,{0});", row));
+                Thread.Sleep(100);
+            }
+        }
+        private void InitWebDriver()
+        {
+            if (service == null)
+            {
+                service = ChromeDriverService.CreateDefaultService();
+                service.HideCommandPromptWindow = true; //隐藏 命令窗口  
+                var option = new ChromeOptions();
+                //option.Proxy = proxy;
+
+                //option.AddArgument("disable-infobars"); //隐藏 自动化标题  
+                //option.AddArgument("headless"); //隐藏 chorme浏览器  
+                option.AddArgument("--incognito");//隐身模式  
+                driver = new OpenQA.Selenium.Chrome.ChromeDriver(service, option, TimeSpan.FromSeconds(40));
+                wait = new WebDriverWait(driver, TimeSpan.FromMinutes(10));
+            }
+        }
+
         private List<string> 从淘宝搜索页获取商品链接(string strsource)
         {
             HtmlAgilityPack.HtmlDocument htmlDocument = new HtmlAgilityPack.HtmlDocument();
@@ -387,7 +516,7 @@ namespace 数据抓取
                 if (a != null)
                 {
                     string uri = a.GetAttributeValue("href");
-                    if(!uri.Contains("click.simba"))
+                    if (!uri.Contains("click.simba"))
                     {
                         lst.Add(a.GetAttributeValue("href"));
                     }
