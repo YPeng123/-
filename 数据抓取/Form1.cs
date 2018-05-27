@@ -333,7 +333,7 @@ namespace 数据抓取
                 if (!string.IsNullOrEmpty(tupian))
                 {
                     var tmparr = tupian.Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
-                    if(tmparr.Length>=2)
+                    if (tmparr.Length >= 2)
                     {
                         tupian = tmparr[1];
                     }
@@ -374,7 +374,7 @@ namespace 数据抓取
             //*[@id="description"]/div/p/img[1]
             //*[@id="description"]/div/img[3]
             var 详情 = html.SelectNodes("//*[@id='description']/div/p/img");
-            if(详情==null)
+            if (详情 == null)
             {
                 详情 = html.SelectNodes("//*[@id='description']/div/img");
             }
@@ -413,11 +413,15 @@ namespace 数据抓取
                 return;
             }
             string filename = form.FileName;
-            获取商品信息(keyword,filename);
-
+            Thread th = new Thread(new ThreadStart(() =>
+            {
+                获取商品信息(keyword, filename);
+            }));
+            th.IsBackground = true;
+            th.Start();
         }
 
-        private void 获取商品信息(string keyword,string filename)
+        private void 获取商品信息(string keyword, string filename)
         {
             InitWebDriver();
             //所有商品
@@ -427,14 +431,36 @@ namespace 数据抓取
             input.SendKeys(keyword);
             submit.Click();
             var total = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#mainsrp-pager > div > div > div > div.total ")); });
+            var btnsort = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='J_relative']/div[1]/div/ul/li[3]/a")); });
+            btnsort.Click();
 
-            string strsource = driver.PageSource;
+            var pagenum = nubpagenum.Value;
+            List<string> lst = new List<string>();
+            for (int i = 1; i <= pagenum; i++)
+            {
+                var pagenuminput = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/input")); });
+                pagenuminput.Clear();
+                var btnenter = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/span[3]")); });
+                if (pagenuminput != null)
+                {
+                    pagenuminput.SendKeys(i.ToString());
+                }
+                btnenter.Click();
+                Thread.Sleep(100);
+                btnenter = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/span[3]")); });
+                string strsource = driver.PageSource;
+                var lsttmp = 从淘宝搜索页获取商品链接(strsource);
+                lst.AddRange(lsttmp);
+            }
 
 
-            List<string> lst = 从淘宝搜索页获取商品链接(strsource);
             this.Invoke(new MethodInvoker(() =>
             {
-                dataGridView1.DataSource = lst.ToArray();
+                //dataGridView1.DataSource = lst.ToList();
+                foreach (var item in lst)
+                {
+                    dataGridView1.Rows.Add(item);
+                }
             }));
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             using (TextWriter writer = new StreamWriter(fs, Encoding.GetEncoding("GB2312")))
@@ -447,7 +473,7 @@ namespace 数据抓取
                         foreach (DataGridViewRow row in dataGridView1.Rows)
                         {
                             string uri = row.Cells[0].Value?.ToString();
-                            if(item==uri)
+                            if (item == uri)
                             {
                                 dataGridView1.CurrentCell = dataGridView1[0, row.Index];
                             }
