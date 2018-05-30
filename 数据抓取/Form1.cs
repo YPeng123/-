@@ -93,20 +93,8 @@ namespace 数据抓取
         }
         private async void BtnTest_Click(object sender, EventArgs e)
         {
-            //var browser = new ScrapingBrowser();
-            //var html = browser.DownloadString(new Uri("http://www.cnblogs.com/"));
-
-            string strsource = await webBrowser1.GetSourceAsync();
-
-            string newfilepath = Path.Combine(Application.StartupPath, "产品数据" + ".csv");
-
-            using (FileStream fs = new FileStream(newfilepath, FileMode.Create))
-            using (TextWriter writer = new StreamWriter(fs, Encoding.GetEncoding("GB2312")))
-            {
-                var csv = new CsvWriter(writer);
-                //获取连接(strsource, csv);
-            }
-
+            InitWebDriver();
+            根据网址抓取商品("C:\\Users\\jiayp\\Desktop\\测试下载链接.csv", new List<string> { "//item.taobao.com/item.htm?id=549540454057&amp;ns=1&amp;abbucket=11#detail" });
         }
         IWebElement FindElement(IWebDriver _driver, string xpath)
         {
@@ -122,7 +110,7 @@ namespace 数据抓取
         }
         private void 获取连接(string uri, CsvWriter csv)
         {
-            var arr = uri.Split(new char[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+            var arr = uri.Split(new char[] { '&', '?' }, StringSplitOptions.RemoveEmptyEntries);
             string id = "";
             id = GetIdByUri(arr);
             string strsource = driver.PageSource;
@@ -157,39 +145,43 @@ namespace 数据抓取
             sb.Clear();
             //var sku_elements = driver.FindElements(By.CssSelector("#J_isku > div.tb-skin > dl.J_Prop tb-prop tb-clear  J_Prop_Color > dd > ui.J_TSaleProp tb-img tb-clearfix > li"));
             var 分类 = html.SelectNodes("//*[@id='J_isku']/div/dl[1]/dd/ul/li/a");
-            foreach (var item in 分类)
+            if (分类 != null)
             {
-                //item.XPath
-                //var skus= wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#J_isku > div.tb-skin > dl.J_Prop tb-prop tb-clear  J_Prop_Color > dd > ui.J_TSaleProp tb-img tb-clearfix > li")); });
-                var pic = item.GetAttributeValue("style");
-                if (!string.IsNullOrEmpty(pic))
-                {
-                    var tmparr = pic.Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
-                    if (tmparr.Length >= 2)
-                    {
-                        pic = tmparr[1];
-                    }
-                }
-                var sku = item.SelectSingleNode("./span").InnerText;
-                var sku_element = driver.FindElement(By.XPath(item.XPath));
-                string price = "";
-                if (sku_element != null)
-                {
-                    sku_element.Click();
-                    Thread.Sleep(100);
-                    var priceele = FindElement(driver, "//*[@id='J_PromoPriceNum']");
-                    if (priceele == null)
-                    {
-                        priceele = FindElement(driver, "//*[@id='J_StrPrice']/em[2]");
-                    }
-                    if (priceele != null)
-                    {
-                        price = priceele.Text;
-                    }
-                }
-                lst分类.Add(string.Format("{0}|{1}|{2}", price, sku, pic));
-                //sb.AppendLine(string.Format("{0}|{1}|{2}", price, sku, pic));
 
+                foreach (var item in 分类)
+                {
+                    //item.XPath
+                    //var skus= wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#J_isku > div.tb-skin > dl.J_Prop tb-prop tb-clear  J_Prop_Color > dd > ui.J_TSaleProp tb-img tb-clearfix > li")); });
+                    var pic = item.GetAttributeValue("style");
+                    if (!string.IsNullOrEmpty(pic))
+                    {
+                        var tmparr = pic.Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (tmparr.Length >= 2)
+                        {
+                            pic = tmparr[1];
+                        }
+                    }
+                    var sku = item.SelectSingleNode("./span").InnerText;
+                    var sku_element = driver.FindElement(By.XPath(item.XPath));
+                    string price = "";
+                    if (sku_element != null)
+                    {
+                        sku_element.Click();
+                        Thread.Sleep(100);
+                        var priceele = FindElement(driver, "//*[@id='J_PromoPriceNum']");
+                        if (priceele == null)
+                        {
+                            priceele = FindElement(driver, "//*[@id='J_StrPrice']/em[2]");
+                        }
+                        if (priceele != null)
+                        {
+                            price = priceele.Text;
+                        }
+                    }
+                    lst分类.Add(string.Format("{0}|{1}|{2}", price, sku, pic));
+                    //sb.AppendLine(string.Format("{0}|{1}|{2}", price, sku, pic));
+
+                }
             }
             //csv.WriteField(sb.ToString().TrimEnd());
 
@@ -287,7 +279,7 @@ namespace 数据抓取
         }
         private void 获取天猫连接(string uri, CsvWriter csv)
         {
-            var arr = uri.Split(new char[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+            var arr = uri.Split(new char[] { '&', '?' }, StringSplitOptions.RemoveEmptyEntries);
             string id = "";
             id = GetIdByUri(arr);
             string strsource = driver.PageSource;
@@ -430,7 +422,7 @@ namespace 数据抓取
             var submit = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#J_TSearchForm > div.search-button > button")); });
             input.SendKeys(keyword);
             submit.Click();
-            var total = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#mainsrp-pager > div > div > div > div.total ")); });
+            //var total = wait.Until<IWebElement>((d) => { return d.FindElement(By.CssSelector("#mainsrp-pager > div > div > div > div.total ")); });
             var btnsort = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='J_relative']/div[1]/div/ul/li[3]/a")); });
             btnsort.Click();
 
@@ -439,14 +431,20 @@ namespace 数据抓取
             for (int i = 1; i <= pagenum; i++)
             {
                 var pagenuminput = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/input")); });
+                if(pagenuminput==null)
+                {
+                    i--;
+                    continue;
+                }
                 pagenuminput.Clear();
-                var btnenter = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/span[3]")); });
                 if (pagenuminput != null)
                 {
                     pagenuminput.SendKeys(i.ToString());
                 }
+                var btnenter = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/span[3]")); });
                 btnenter.Click();
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
+
                 btnenter = wait.Until<IWebElement>((d) => { return d.FindElement(By.XPath("//*[@id='mainsrp-pager']/div/div/div/div[2]/span[3]")); });
                 string strsource = driver.PageSource;
                 var lsttmp = 从淘宝搜索页获取商品链接(strsource);
@@ -462,6 +460,11 @@ namespace 数据抓取
                     dataGridView1.Rows.Add(item);
                 }
             }));
+            根据网址抓取商品(filename, lst);
+        }
+
+        private void 根据网址抓取商品(string filename, List<string> lst)
+        {
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             using (TextWriter writer = new StreamWriter(fs, Encoding.GetEncoding("GB2312")))
             using (var csv = new CsvWriter(writer))
