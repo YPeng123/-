@@ -26,6 +26,12 @@ namespace 根据sku抓取数据
 
         private void btnOpen_Click(object sender, EventArgs e)
         {
+            idcolindex = int.Parse(textBox1.Text);
+            skuscolindex = int.Parse(textBox2.Text);
+            imagescolindex = int.Parse(textBox3.Text);
+            detailscolindex = int.Parse(textBox4.Text);
+            keywordcolindex = int.Parse(textBox5.Text);
+
             OpenFileDialog form = new OpenFileDialog();
             if (form.ShowDialog() == DialogResult.OK)
             {
@@ -66,13 +72,18 @@ namespace 根据sku抓取数据
             }
             form.Dispose();
         }
+        int idcolindex = 0;
+        int skuscolindex = 11;
+        int imagescolindex = 16;
+        int detailscolindex = 17;
+        int keywordcolindex = 18;
         private void Parse(DataRow row)
         {
-            string id = row[0].ToString();
-            string skus = row[11].ToString();
-            string images = row[16].ToString();
-            string details = row[17].ToString();
-            string keyword = row[18].ToString();
+            string id = row[idcolindex].ToString();
+            string skus = row[skuscolindex].ToString();
+            string images = row[imagescolindex].ToString();
+            string details = row[detailscolindex].ToString();
+            string keyword = row[keywordcolindex].ToString();
 
             string strroot = Path.Combine(Application.StartupPath, "数据");
             string strpath = Path.Combine(strroot, keyword);
@@ -202,5 +213,7 @@ namespace 根据sku抓取数据
 
             }
         }
+
+
     }
 }
