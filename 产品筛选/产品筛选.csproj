@@ -114,5 +114,11 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\根据sku抓取数据\根据sku抓取数据.csproj">
+      <Project>{6239564a-be78-4c45-aab4-77708245db56}</Project>
+      <Name>根据sku抓取数据</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

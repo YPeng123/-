@@ -12,11 +12,19 @@ namespace 根据sku抓取数据
         /// 应用程序的主入口点。
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            if(args==null||args.Length==0)
+            {
+                Application.Run(new Form1());
+            }
+            else
+            {
+                //MessageBox.Show("测试");
+                Application.Run(new Form1(args[0]));
+            }
         }
     }
 }

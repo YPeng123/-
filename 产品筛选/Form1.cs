@@ -5,12 +5,15 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
+using System.Xml.Serialization;
 
 namespace 产品筛选
 {
@@ -33,6 +36,8 @@ namespace 产品筛选
         }
         private ProductDataset.ProductDataTable m_datatable = new ProductDataset.ProductDataTable();
         private HashSet<string> lstkeywords = new HashSet<string>();
+        private DataTable maintable = null;
+        private string keyword = "";
         private void button1_Click(object sender, EventArgs e)
         {
             Form2 form2 = new Form2();
@@ -58,7 +63,8 @@ namespace 产品筛选
                 //将数据转为datatable
                 m_datatable.Clear();
                 lstkeywords.Clear();
-                foreach (DataRow row in excelReader.AsDataSet().Tables[0].Rows)
+                maintable = excelReader.AsDataSet().Tables[0];
+                foreach (DataRow row in maintable.Rows)
                 {
                     string id = row[Form2.idcolindex]?.ToString();
                     string title = row[Form2.titlecolindex]?.ToString();
@@ -127,8 +133,8 @@ namespace 产品筛选
         private ProductDataset.ProductDataTable curtalbe = null;
         private void button2_Click(object sender, EventArgs e)
         {
-            string keyword = comboBox1.SelectedItem?.ToString();
-            if(string.IsNullOrEmpty( keyword ))
+            keyword = comboBox1.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(keyword))
             {
                 keyword = "";
             }
@@ -145,6 +151,73 @@ namespace 产品筛选
             }
             curtalbe = table;
             dataGridView1.DataSource = table;
+        }
+
+        /// <summary>  
+        /// 序列化DataTable  
+        /// </summary>  
+        /// <param name="pDt">包含数据的DataTable</param>  
+        /// <returns>序列化的DataTable</returns>  
+        private static void SerializeDataTableXml(string path, DataTable pDt)
+        {
+            // 序列化DataTable  
+            using (XmlWriter writer = XmlWriter.Create(path))
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
+                serializer.Serialize(writer, pDt);
+            }
+        }
+
+        /// <summary>  
+        /// 反序列化DataTable  
+        /// </summary>  
+        /// <param name="pXml">序列化的DataTable</param>  
+        /// <returns>DataTable</returns>  
+        public static DataTable DeserializeDataTable(string path)
+        {
+            using (var strReader = new StreamReader(path))
+            {
+                XmlReader xmlReader = XmlReader.Create(strReader);
+                XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
+                DataTable dt = serializer.Deserialize(xmlReader) as DataTable;
+                return dt;
+            }
+        }
+        private void button3_Click(object sender, EventArgs e)
+        {
+            if ((maintable != null) && (curtalbe == null || curtalbe.Rows.Count == 0))
+            {
+                MessageBox.Show("请先导入商品，或查询商品");
+                return;
+            }
+            using (FolderBrowserDialog form = new FolderBrowserDialog())
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    var newtable = maintable.Clone();
+                    foreach (DataRow item in maintable.Rows)
+                    {
+                        foreach (var row in curtalbe)
+                        {
+                            if (row.ID == item[Form2.idcolindex].ToString())
+                            {
+                                newtable.ImportRow(item);
+                            }
+                        }
+                    }
+                    if (string.IsNullOrEmpty(keyword))
+                    {
+                        keyword = Guid.NewGuid().ToString();
+                    }
+                    string path = Path.Combine(form.SelectedPath, keyword + ".xml");
+                    //newtable.WriteXml(path);
+                    SerializeDataTableXml(path, newtable);
+                    Process.Start("根据sku抓取数据.exe", path);
+                    //Process.Start("根据sku抓取数据.exe");
+                }
+            }
+
+
         }
     }
 }

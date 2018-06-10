@@ -1,4 +1,4 @@
-﻿using Excel;
+﻿using ExcelDataReader;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -12,6 +12,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
+using System.Xml.Serialization;
 
 namespace 根据sku抓取数据
 {
@@ -21,11 +23,20 @@ namespace 根据sku抓取数据
         {
             InitializeComponent();
         }
+        public Form1(string xmlpath)
+        {
+            InitializeComponent();
+            txtpath.Text = Path.GetDirectoryName(xmlpath);
+            btnOpen.Enabled = false;
+            this.Text = string.Format("下载图片 - {0} ", Path.GetFileName(xmlpath));
+            Loadxml(xmlpath);
+        }
         HashSet<string> hashsetkeyword = new HashSet<string>();
         int totalcount = 0;
 
         private void btnOpen_Click(object sender, EventArgs e)
         {
+           
             idcolindex = int.Parse(textBox1.Text);
             skuscolindex = int.Parse(textBox2.Text);
             imagescolindex = int.Parse(textBox3.Text);
@@ -35,48 +46,85 @@ namespace 根据sku抓取数据
             OpenFileDialog form = new OpenFileDialog();
             if (form.ShowDialog() == DialogResult.OK)
             {
-                var stream = form.OpenFile();
-                string extension = Path.GetExtension(form.FileName);
-                IExcelDataReader excelReader = null;
-                if (extension == ".xls")
+                using (var stream = form.OpenFile())
                 {
-                    excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
+
+                    string extension = Path.GetExtension(form.FileName);
+                    IExcelDataReader excelReader = null;
+                    if (extension == ".xls")
+                    {
+                        excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
+                    }
+                    else if (extension == ".xlsx")
+                    {
+                        excelReader = ExcelReaderFactory.CreateOpenXmlReader(stream);
+                    }
+                    //excelReader.IsFirstRowAsColumnNames = true;
+                    DataSet result = excelReader.AsDataSet();
+                    curtable = result.Tables[0];
+                    //DownImage(result.Tables[0]);
                 }
-                else if (extension == ".xlsx")
-                {
-                    excelReader = ExcelReaderFactory.CreateOpenXmlReader(stream);
-                }
-                excelReader.IsFirstRowAsColumnNames = true;
-                DataSet result = excelReader.AsDataSet();
-                totalcount = 0;
-                int count = result.Tables[0].Rows.Count;
-                Thread th = new Thread(() =>
-                  {
-                      Parallel.ForEach<DataRow>(result.Tables[0].AsEnumerable(), row =>
-                      {
-                          Parse(row);
-                          lock (this)
-                          {
-                              totalcount++;
-                              this.BeginInvoke(new MethodInvoker(() =>
-                              {
-                                  labelcount.Text = string.Format("{0}/{1}", totalcount, count);
-                              }));
-                          }
-                      });
-                        
-                  });
-                th.IsBackground = true;
-                th.Start();
-                
             }
             form.Dispose();
         }
-        int idcolindex = 0;
-        int skuscolindex = 11;
-        int imagescolindex = 16;
-        int detailscolindex = 17;
-        int keywordcolindex = 18;
+        DataTable curtable = null;
+        private void SetStartDownload()
+        {
+            if(this.InvokeRequired)
+            {
+                this.BeginInvoke(new MethodInvoker(SetStartDownload));
+            }
+            else
+            {
+                this.panel1.Enabled = false;
+            }
+        }
+        private void SetEndDownload()
+        {
+            if(this.InvokeRequired)
+            {
+                this.BeginInvoke(new MethodInvoker(SetEndDownload));
+            }
+            else
+            {
+                this.panel1.Enabled = false;
+            }
+        }
+        public void DownImage(DataTable result)
+        {
+            if(curtable==null)
+            {
+                MessageBox.Show("请导入商品");
+                return;
+            }
+            totalcount = 0;
+            int count = result.Rows.Count;
+            Thread th = new Thread(() =>
+            {
+                SetStartDownload();
+                Parallel.ForEach<DataRow>(result.AsEnumerable(), row =>
+                {
+                    Parse(row);
+                    lock (this)
+                    {
+                        totalcount++;
+                        this.BeginInvoke(new MethodInvoker(() =>
+                        {
+                            labelcount.Text = string.Format("{0}/{1}", totalcount, count);
+                        }));
+                    }
+                });
+                SetEndDownload();
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        public int idcolindex = 0;
+        public int skuscolindex = 11;
+        public int imagescolindex = 16;
+        public int detailscolindex = 17;
+        public int keywordcolindex = 18;
         private void Parse(DataRow row)
         {
             string id = row[idcolindex].ToString();
@@ -85,7 +133,7 @@ namespace 根据sku抓取数据
             string details = row[detailscolindex].ToString();
             string keyword = row[keywordcolindex].ToString();
 
-            string strroot = Path.Combine(Application.StartupPath, "数据");
+            string strroot = txtpath.Text; //Path.Combine(Application.StartupPath, "数据");
             string strpath = Path.Combine(strroot, keyword);
             string stridpath = Path.Combine(strpath, id);
             string strskupath = Path.Combine(stridpath, "sku");
@@ -213,7 +261,68 @@ namespace 根据sku抓取数据
 
             }
         }
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            if(string.IsNullOrWhiteSpace(txtpath.Text))
+            {
+                txtpath.Text = Path.Combine(Application.StartupPath, "数据");
+            }
+        }
+        private void button2_Click(object sender, EventArgs e)
+        {
+            using (FolderBrowserDialog form = new FolderBrowserDialog())
+            {
+                if(form.ShowDialog()==DialogResult.OK)
+                {
+                    txtpath.Text = form.SelectedPath;
+                }
+            }
+        }
+        /// <summary>  
+        /// 序列化DataTable  
+        /// </summary>  
+        /// <param name="pDt">包含数据的DataTable</param>  
+        /// <returns>序列化的DataTable</returns>  
+        private static void SerializeDataTableXml(string path, DataTable pDt)
+        {
+            // 序列化DataTable  
+            using (XmlWriter writer = XmlWriter.Create(path))
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
+                serializer.Serialize(writer, pDt);
+            }
+        }
 
-
+        /// <summary>  
+        /// 反序列化DataTable  
+        /// </summary>  
+        /// <param name="pXml">序列化的DataTable</param>  
+        /// <returns>DataTable</returns>  
+        public static DataTable DeserializeDataTable(string path)
+        {
+            using (var strReader = new StreamReader(path))
+            {
+                XmlReader xmlReader = XmlReader.Create(strReader);
+                XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
+                DataTable dt = serializer.Deserialize(xmlReader) as DataTable;
+                return dt;
+            }
+        }
+        public void Loadxml(string xmlpath)
+        {
+            curtable= DeserializeDataTable(xmlpath);
+            //curtable = new DataTable();
+            //curtable.ReadXml(xmlpath);
+        }
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtpath.Text))
+            {
+                MessageBox.Show("请设置下载路径");
+                return;
+            }
+            DownImage(curtable);
+        }
     }
 }
