@@ -36,13 +36,22 @@ namespace 根据sku抓取数据
 
         private void btnOpen_Click(object sender, EventArgs e)
         {
-           
+
             idcolindex = int.Parse(textBox1.Text);
             skuscolindex = int.Parse(textBox2.Text);
             imagescolindex = int.Parse(textBox3.Text);
             detailscolindex = int.Parse(textBox4.Text);
             keywordcolindex = int.Parse(textBox5.Text);
 
+
+            string path = Path.Combine(Application.StartupPath, "config.ini");
+            Ini ini = new Ini(path);
+            ini.WriteValue("colindex", "idcolindex", idcolindex.ToString());
+            ini.WriteValue("skuscolindex", "colindex", skuscolindex.ToString());
+            ini.WriteValue("imagescolindex", "colindex", imagescolindex.ToString());
+            ini.WriteValue("detailscolindex", "colindex", detailscolindex.ToString());
+            ini.WriteValue("keywordcolindex", "colindex", keywordcolindex.ToString());
+            ini.Save();
             OpenFileDialog form = new OpenFileDialog();
             if (form.ShowDialog() == DialogResult.OK)
             {
@@ -50,19 +59,26 @@ namespace 根据sku抓取数据
                 {
 
                     string extension = Path.GetExtension(form.FileName);
-                    IExcelDataReader excelReader = null;
-                    if (extension == ".xls")
+                    if(extension==".xml")
                     {
-                        excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
+                        Loadxml(form.FileName);
                     }
-                    else if (extension == ".xlsx")
+                    else
                     {
-                        excelReader = ExcelReaderFactory.CreateOpenXmlReader(stream);
+                        IExcelDataReader excelReader = null;
+                        if (extension == ".xls")
+                        {
+                            excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
+                        }
+                        else if (extension == ".xlsx")
+                        {
+                            excelReader = ExcelReaderFactory.CreateOpenXmlReader(stream);
+                        }
+                        //excelReader.IsFirstRowAsColumnNames = true;
+                        DataSet result = excelReader.AsDataSet();
+                        curtable = result.Tables[0];
+                        //DownImage(result.Tables[0]);
                     }
-                    //excelReader.IsFirstRowAsColumnNames = true;
-                    DataSet result = excelReader.AsDataSet();
-                    curtable = result.Tables[0];
-                    //DownImage(result.Tables[0]);
                 }
             }
             form.Dispose();
@@ -70,7 +86,7 @@ namespace 根据sku抓取数据
         DataTable curtable = null;
         private void SetStartDownload()
         {
-            if(this.InvokeRequired)
+            if (this.InvokeRequired)
             {
                 this.BeginInvoke(new MethodInvoker(SetStartDownload));
             }
@@ -81,18 +97,19 @@ namespace 根据sku抓取数据
         }
         private void SetEndDownload()
         {
-            if(this.InvokeRequired)
+            if (this.InvokeRequired)
             {
                 this.BeginInvoke(new MethodInvoker(SetEndDownload));
             }
             else
             {
-                this.panel1.Enabled = false;
+                this.panel1.Enabled = true;
+                this.Close();
             }
         }
         public void DownImage(DataTable result)
         {
-            if(curtable==null)
+            if (curtable == null)
             {
                 MessageBox.Show("请导入商品");
                 return;
@@ -264,7 +281,30 @@ namespace 根据sku抓取数据
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            if(string.IsNullOrWhiteSpace(txtpath.Text))
+            idcolindex = int.Parse(textBox1.Text);
+            skuscolindex = int.Parse(textBox2.Text);
+            imagescolindex = int.Parse(textBox3.Text);
+            detailscolindex = int.Parse(textBox4.Text);
+            keywordcolindex = int.Parse(textBox5.Text);
+
+            try
+            {
+                string path = Path.Combine(Application.StartupPath, "config.ini");
+                if (File.Exists(path))
+                {
+                    Ini ini = new Ini(path);
+                    textBox1.Text = ini.GetValue("idcolindex", "colindex", idcolindex.ToString());
+                    textBox2.Text = ini.GetValue("skuscolindex", "colindex", skuscolindex.ToString());
+                    textBox3.Text = ini.GetValue("imagescolindex", "colindex", imagescolindex.ToString());
+                    textBox4.Text = ini.GetValue("detailscolindex", "colindex", detailscolindex.ToString());
+                    textBox5.Text = ini.GetValue("keywordcolindex", "colindex", keywordcolindex.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+            }
+
+            if (string.IsNullOrWhiteSpace(txtpath.Text))
             {
                 txtpath.Text = Path.Combine(Application.StartupPath, "数据");
             }
@@ -273,7 +313,7 @@ namespace 根据sku抓取数据
         {
             using (FolderBrowserDialog form = new FolderBrowserDialog())
             {
-                if(form.ShowDialog()==DialogResult.OK)
+                if (form.ShowDialog() == DialogResult.OK)
                 {
                     txtpath.Text = form.SelectedPath;
                 }
@@ -287,7 +327,8 @@ namespace 根据sku抓取数据
         private static void SerializeDataTableXml(string path, DataTable pDt)
         {
             // 序列化DataTable  
-            using (XmlWriter writer = XmlWriter.Create(path))
+            XmlWriterSettings xmlsetting = new XmlWriterSettings { CheckCharacters = false };
+            using (XmlWriter writer = XmlWriter.Create(path, xmlsetting))
             {
                 XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
                 serializer.Serialize(writer, pDt);
@@ -301,9 +342,10 @@ namespace 根据sku抓取数据
         /// <returns>DataTable</returns>  
         public static DataTable DeserializeDataTable(string path)
         {
+            XmlReaderSettings xmlReaderSettings = new XmlReaderSettings { CheckCharacters = false };
             using (var strReader = new StreamReader(path))
             {
-                XmlReader xmlReader = XmlReader.Create(strReader);
+                XmlReader xmlReader = XmlReader.Create(strReader, xmlReaderSettings);
                 XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
                 DataTable dt = serializer.Deserialize(xmlReader) as DataTable;
                 return dt;
@@ -311,12 +353,17 @@ namespace 根据sku抓取数据
         }
         public void Loadxml(string xmlpath)
         {
-            curtable= DeserializeDataTable(xmlpath);
+            curtable = DeserializeDataTable(xmlpath);
             //curtable = new DataTable();
             //curtable.ReadXml(xmlpath);
         }
         private void button1_Click(object sender, EventArgs e)
         {
+            idcolindex = int.Parse(textBox1.Text);
+            skuscolindex = int.Parse(textBox2.Text);
+            imagescolindex = int.Parse(textBox3.Text);
+            detailscolindex = int.Parse(textBox4.Text);
+            keywordcolindex = int.Parse(textBox5.Text);
             if (string.IsNullOrWhiteSpace(txtpath.Text))
             {
                 MessageBox.Show("请设置下载路径");

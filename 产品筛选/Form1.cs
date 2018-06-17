@@ -134,16 +134,25 @@ namespace 产品筛选
         private void button2_Click(object sender, EventArgs e)
         {
             keyword = comboBox1.SelectedItem?.ToString();
+            EnumerableRowCollection<ProductDataset.ProductRow> tmp;
+            double minprice = Convert.ToDouble(numericUpDown4.Value);
             if (string.IsNullOrEmpty(keyword))
             {
-                keyword = "";
+                tmp=from row in m_datatable
+                    where row._30天内交易成功数 >= numericUpDown1.Value
+                     && row._30天内已出售 >= numericUpDown2.Value && row.SKU数 <= numericUpDown3.Value
+                     && row.最小价格 >= minprice && row.累计评论数 >= numericUpDown5.Value
+                    select row;
             }
-            double minprice = Convert.ToDouble(numericUpDown4.Value);
-            var tmp = from row in m_datatable
+            else
+            {
+                tmp = from row in m_datatable
                       where row.关键字 == keyword && row._30天内交易成功数 >= numericUpDown1.Value
                       && row._30天内已出售 >= numericUpDown2.Value && row.SKU数 <= numericUpDown3.Value
                       && row.最小价格 >= minprice && row.累计评论数 >= numericUpDown5.Value
                       select row;
+            }
+
             ProductDataset.ProductDataTable table = new ProductDataset.ProductDataTable();
             foreach (var item in tmp)
             {
@@ -161,7 +170,8 @@ namespace 产品筛选
         private static void SerializeDataTableXml(string path, DataTable pDt)
         {
             // 序列化DataTable  
-            using (XmlWriter writer = XmlWriter.Create(path))
+            XmlWriterSettings xmlsetting = new XmlWriterSettings { CheckCharacters = false };
+            using (XmlWriter writer = XmlWriter.Create(path, xmlsetting))
             {
                 XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
                 serializer.Serialize(writer, pDt);
@@ -175,9 +185,10 @@ namespace 产品筛选
         /// <returns>DataTable</returns>  
         public static DataTable DeserializeDataTable(string path)
         {
+            XmlReaderSettings xmlReaderSettings = new XmlReaderSettings { CheckCharacters = false };
             using (var strReader = new StreamReader(path))
             {
-                XmlReader xmlReader = XmlReader.Create(strReader);
+                XmlReader xmlReader = XmlReader.Create(strReader, xmlReaderSettings);
                 XmlSerializer serializer = new XmlSerializer(typeof(DataTable));
                 DataTable dt = serializer.Deserialize(xmlReader) as DataTable;
                 return dt;
@@ -192,6 +203,8 @@ namespace 产品筛选
             }
             using (FolderBrowserDialog form = new FolderBrowserDialog())
             {
+                Ini ini = new Ini(Path.Combine(Application.StartupPath, "config.ini"));
+                form.SelectedPath = ini.GetValue("selectpath", "path", "D:/");
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     var newtable = maintable.Clone();
@@ -210,6 +223,7 @@ namespace 产品筛选
                         keyword = Guid.NewGuid().ToString();
                     }
                     string path = Path.Combine(form.SelectedPath, keyword + ".xml");
+                    ini.WriteValue("selectpath", "path", form.SelectedPath);
                     //newtable.WriteXml(path);
                     SerializeDataTableXml(path, newtable);
                     Process.Start("根据sku抓取数据.exe", path);
