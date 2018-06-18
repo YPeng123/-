@@ -15,15 +15,23 @@ namespace Exportdataprocessing
     public partial class products
     {
         public string id { get; set; }
-        public string url { get; set; }
         public string title { get; set; }
-        public int skunum { get; set; }
-        public decimal minprice { get; set; }
-        public decimal maxprice { get; set; }
-        public int minchengjiao { get; set; }
-        public int minyishou { get; set; }
-        public int review_quantity { get; set; }
+        public string description { get; set; }
+        public string @params { get; set; }
+        public Nullable<int> month_sales_count { get; set; }
+        public Nullable<int> stock { get; set; }
+        public Nullable<int> skunumber { get; set; }
+        public string shipping_address { get; set; }
+        public string shop_id { get; set; }
+        public string category_id { get; set; }
+        public Nullable<int> comments_count { get; set; }
         public string keyword { get; set; }
-        public string market { get; set; }
+        public Nullable<decimal> current_price_min { get; set; }
+        public Nullable<decimal> current_price_max { get; set; }
+        public Nullable<decimal> original_price_min { get; set; }
+        public Nullable<decimal> original_price_max { get; set; }
+        public Nullable<int> stores_count { get; set; }
+        public Nullable<decimal> score { get; set; }
+        public string uri { get; set; }
     }
 }

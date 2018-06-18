@@ -117,45 +117,10 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="label1.Text" xml:space="preserve">
-    <value>id
-
-title 标题
-
-description 描述
-
-params 参数详情
-
-current_price 当前价格
-
-original_price 原价
-
-month_sales_count 月销量
-
-stock 库存
-
-sku 规格详情
-
-shipping_address 发货地址
-
-shop_id 商店ID
-
-shop_name 商店名字
-
-category_id 商品分类ID
-
-keyword 关键字
-
-comments_count 
-
-url 商品链接
-
-images 商品图片
-
-detail 商品详情
-
-stores_count 收藏数
-
-score 评分</value>
-  </data>
+  <metadata name="ctlparamname.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
+  <metadata name="colvalue.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>True</value>
+  </metadata>
 </root>

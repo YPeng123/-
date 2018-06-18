@@ -13,10 +13,10 @@ namespace Exportdataprocessing
     using System.Data.Entity;
     using System.Data.Entity.Infrastructure;
     
-    public partial class yiyilandbEntities : DbContext
+    public partial class YIyilanDatabaseContainer : DbContext
     {
-        public yiyilandbEntities()
-            : base("name=yiyilandbEntities")
+        public YIyilanDatabaseContainer()
+            : base("name=YIyilanDatabaseContainer")
         {
         }
     
@@ -25,6 +25,10 @@ namespace Exportdataprocessing
             throw new UnintentionalCodeFirstException();
         }
     
+        public virtual DbSet<imagedetail> imagedetail { get; set; }
+        public virtual DbSet<productparams> productparams { get; set; }
         public virtual DbSet<products> products { get; set; }
+        public virtual DbSet<productskus> productskus { get; set; }
+        public virtual DbSet<shops> shops { get; set; }
     }
 }

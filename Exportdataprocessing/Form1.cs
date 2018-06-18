@@ -1,11 +1,7 @@
-﻿using ExcelDataReader;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Data.Entity;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -20,160 +16,170 @@ namespace Exportdataprocessing
         public Form1()
         {
             InitializeComponent();
+            dgvProduct.SetDoubleBuffered(true);
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        protected override void OnLoad(EventArgs e)
         {
-            // TODO: 这行代码将数据加载到表“yiyilandbDataSet.products”中。您可以根据需要移动或删除它。
-            this.productsTableAdapter.Fill(this.yiyilandbDataSet.products);
-        }
-
-        private DataTable maintable = null;
-
-        private string 哪个市场(string url)
-        {
-            if (string.IsNullOrEmpty(url)) return "未知";
-            if (url.Contains("detail")) return "天猫";
-            else if (url.Contains("taobao")) return "淘宝";
-            return "未知";
-        }
-
-        private void DaoRu()
-        {
-            Form2 form2 = new Form2();
-            if (form2.ShowDialog() != DialogResult.OK)
+            base.OnLoad(e);
+            string path = Path.Combine(Application.StartupPath, "config.ini");
+            if (File.Exists(path))
             {
-                return;
+                Ini ini = new Ini(path);
+                txtid.Text = ini.GetValue("id", "colindex", "0");
+                txttitle.Text = ini.GetValue("title", "colindex", "1");
+                txtdescription.Text = ini.GetValue("description", "colindex", "2");
+                txtparams.Text = ini.GetValue("params", "colindex", "3");
+                txtcurrent_price.Text = ini.GetValue("current_price", "colindex", "4");
+                txtoriginal_price.Text = ini.GetValue("original_price", "colindex", "5");
+                txtmonth_sales_count.Text = ini.GetValue("month_sales_count", "colindex", "6");
+                txtstock.Text = ini.GetValue("stock", "colindex", "7");
+                txtsku.Text = ini.GetValue("sku", "colindex", "8");
+                txtshipping_address.Text = ini.GetValue("shipping_address", "colindex", "9");
+                txtshop_id.Text = ini.GetValue("shop_id", "colindex", "10");
+                txtshop_name.Text = ini.GetValue("shop_name", "colindex", "11");
+                txtcategory_id.Text = ini.GetValue("category_id", "colindex", "12");
+                txtkeyword.Text = ini.GetValue("keyword", "colindex", "13");
+                txtcomments_count.Text = ini.GetValue("comments_count", "colindex", "14");
+                txturl.Text = ini.GetValue("url", "colindex", "15");
+                txtimages.Text = ini.GetValue("images", "colindex", "16");
+                txtdetail.Text = ini.GetValue("detail", "colindex", "17");
+                txtstores_count.Text = ini.GetValue("stores_count", "colindex", "18");
+                txtscore.Text = ini.GetValue("score", "colindex", "19");
             }
-            //导入
-            OpenFileDialog form = new OpenFileDialog();
-            if (form.ShowDialog() == DialogResult.OK)
-            {
-                var stream = form.OpenFile();
-                string extension = Path.GetExtension(form.FileName);
-                IExcelDataReader excelReader = null;
-                if (extension == ".xls")
-                {
-                    excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
-                }
-                else if (extension == ".xlsx")
-                {
-                    excelReader = ExcelReaderFactory.CreateOpenXmlReader(stream);
-                }
-                //将数据转为datatable
-                maintable = excelReader.AsDataSet().Tables[0];
-                foreach (DataRow row in maintable.Rows)
-                {
-                    string id = row[Form2.idcolindex]?.ToString();
-                    string url = row[Form2.urlcolindex]?.ToString();
-                    string title = row[Form2.titlecolindex]?.ToString();
-                    string market = 哪个市场(url);
-                    decimal minprice;
-                    decimal maxprice;
-                    ParsePrice(row[Form2.pricecolindex]?.ToString(), out minprice, out maxprice);
-                    int chengjiaonum;
-                    if (!int.TryParse(row[Form2.chengjiaocolindex]?.ToString(), out chengjiaonum))
-                    {
-                        chengjiaonum = 0;
-                    }
-                    int yishounum;
-                    if (!int.TryParse(row[Form2.yishoucolindex]?.ToString(), out yishounum))
-                    {
-                        yishounum = 0;
-                    }
-                    int skunum = 0;
-                    try
-                    {
-                        JArray ja = (JArray)JsonConvert.DeserializeObject(row[Form2.skuscolindex]?.ToString());
-                        //string str = jo["image"].ToString();
-                        if(ja.Count>0)
-                        {
-                            skunum = ja[0]["values"].Count();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-
-                    }
-                    int pinlunshu;
-                    if (!int.TryParse(row[Form2.pinluncolindex]?.ToString(), out pinlunshu))
-                    {
-                        pinlunshu = 0;
-                    }
-                    string keyword = row[Form2.keywordcolindex]?.ToString();
-
-                    //this.yiyilandbDataSet.products.AddproductsRow(id, url, title, skunum, minprice, maxprice, chengjiaonum, yishounum, pinlunshu, keyword, market);
-                    using (yiyilandbEntities dbContext = new yiyilandbEntities())
-                    {
-                        bool isnew = false;
-                        products pro = dbContext.products.Find(id);
-                        if (pro == null)
-                        {
-                            pro = new products();
-                            pro.id = id;
-                            isnew = true;
-                        }
-                        pro.url = url;
-                        pro.title = title;
-                        pro.skunum = skunum;
-                        pro.minprice = minprice;
-                        pro.maxprice = maxprice;
-                        pro.minchengjiao = chengjiaonum;
-                        pro.minyishou = yishounum;
-                        pro.review_quantity = pinlunshu;
-                        pro.keyword = keyword;
-                        pro.market = market;
-                        if(isnew)
-                        {
-                            dbContext.Set<products>().Add(pro);
-                        }
-                        dbContext.SaveChanges();
-                    }
-
-
-                    //lstkeywords.Add(keyword);
-                    //m_datatable.Rows.Add(id, title, minprice, maxprice, chengjiaonum, yishounum, skunum, pinlunshu, keyword);
-
-                }
-            }
-            //dataGridView1.DataSource = m_datatable;
-            //comboBox1.DataSource = lstkeywords.ToArray();
         }
 
-
-        bool ParsePrice(string strprice, out decimal minprice, out decimal maxprice)
+        private bool SetColindex()
         {
-            minprice = 0;
-            maxprice = 0;
             try
             {
-                var arr = strprice.Split(new char[] { '-' }, StringSplitOptions.RemoveEmptyEntries);
-                if (arr.Length > 0)
-                {
-                    minprice = maxprice = decimal.Parse(arr[0]);
-                }
-                if (arr.Length > 1)
-                {
-                    maxprice = decimal.Parse(arr[1]);
-                }
+                parserow.id = int.Parse(txtid.Text);
+                parserow.title = int.Parse(txttitle.Text);
+                parserow.description = int.Parse(txtdescription.Text);
+                parserow.paramindex = int.Parse(txtparams.Text);
+                parserow.current_price = int.Parse(txtcurrent_price.Text);
+                parserow.original_price = int.Parse(txtoriginal_price.Text);
+                parserow.month_sales_count = int.Parse(txtmonth_sales_count.Text);
+                parserow.stock = int.Parse(txtstock.Text);
+                parserow.sku = int.Parse(txtsku.Text);
+                parserow.shipping_address = int.Parse(txtshipping_address.Text);
+                parserow.shop_id = int.Parse(txtshop_id.Text);
+                parserow.shop_name = int.Parse(txtshop_name.Text);
+                parserow.category_id = int.Parse(txtcategory_id.Text);
+                parserow.keyword = int.Parse(txtkeyword.Text);
+                parserow.comments_count = int.Parse(txtcomments_count.Text);
+                parserow.url = int.Parse(txturl.Text);
+                parserow.images = int.Parse(txtimages.Text);
+                parserow.detail = int.Parse(txtdetail.Text);
+                parserow.stores_count = int.Parse(txtstores_count.Text);
+                parserow.score = int.Parse(txtscore.Text);
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 return false;
             }
+        }
+        ReadData m_readdata = new ReadData();
+        private async void btnimport_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog form = new OpenFileDialog();
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                bool rtn = await m_readdata.ReadExcelAsync(form.FileName);
+                if (rtn)
+                {
+                    dgvProduct.DataSource = m_readdata.ProductData;
+                }
+                else
+                {
+                    MessageBox.Show("加载失败");
+                }
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            SetColindex();
+            Ini ini = new Ini(Path.Combine(Application.StartupPath, "config.ini"));
+            ini.WriteValue("id", "colindex", txtid.Text);
+            ini.WriteValue("title", "colindex", txttitle.Text);
+            ini.WriteValue("description", "colindex", txtdescription.Text);
+            ini.WriteValue("params", "colindex", txtparams.Text);
+            ini.WriteValue("current_price", "colindex", txtcurrent_price.Text);
+            ini.WriteValue("original_price", "colindex", txtoriginal_price.Text);
+            ini.WriteValue("month_sales_count", "colindex", txtmonth_sales_count.Text);
+            ini.WriteValue("stock", "colindex", txtstock.Text);
+            ini.WriteValue("sku", "colindex", txtsku.Text);
+            ini.WriteValue("shipping_address", "colindex", txtshipping_address.Text);
+            ini.WriteValue("shop_id", "colindex", txtshop_id.Text);
+            ini.WriteValue("shop_name", "colindex", txtshop_name.Text);
+            ini.WriteValue("category_id", "colindex", txtcategory_id.Text);
+            ini.WriteValue("keyword", "colindex", txtkeyword.Text);
+            ini.WriteValue("comments_count", "colindex", txtcomments_count.Text);
+            ini.WriteValue("url", "colindex", txturl.Text);
+            ini.WriteValue("images", "colindex", txtimages.Text);
+            ini.WriteValue("detail", "colindex", txtdetail.Text);
+            ini.WriteValue("stores_count", "colindex", txtstores_count.Text);
+            ini.WriteValue("score", "colindex", txtscore.Text);
+            ini.Save();
+        }
+
+        private void dgvProduct_CurrentCellChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if(!SetColindex())
+                {
+                    MessageBox.Show("请输入正确的列号");
+                }
+                DataGridViewRow row = dgvProduct.CurrentRow;
+                DataRow datarow = ((DataRowView)row.DataBoundItem).Row;
+                string id = datarow[parserow.id].ToString();
+                var lst = parserow.ParamParamInfo(datarow);
+                ctlParam1.SetParam(id, lst);
+
+                ctlSKU1.SetParam(id, parserow.ParamSkuInfo(datarow));
+
+                List<string> lstimages;
+                List<string> lstdetails;
+                parserow.ParamImage(datarow, out lstimages, out lstdetails);
+                ctlImageurl1.SetParam(id, lstimages, lstdetails);
+
+            }
+            catch (Exception ex)
+            {
+            }
 
         }
 
-        private void btndaoru_Click(object sender, EventArgs e)
+        private void UpdateProcess(int curindex,int total)
         {
-            DaoRu();
+            if(this.InvokeRequired)
+            {
+                this.BeginInvoke(new MethodInvoker(() =>
+                {
+                    UpdateProcess(curindex, total);
+                }));
+            }
+            else
+            {
+                this.Text = string.Format("上传数据 {0}/{1}", curindex, total);
+            }
         }
-
-        private void btnrefresh_Click(object sender, EventArgs e)
+        private async void btnupdate_Click(object sender, EventArgs e)
         {
-            this.yiyilandbDataSet.products.Clear();
-            this.productsTableAdapter.Fill(this.yiyilandbDataSet.products);
+            if (m_readdata.ProductData==null)
+            {
+                MessageBox.Show("请先导入数据");
+                return;
+            }
+            panel1.Enabled = false;
+            using (ImportDbContext dbContext = new ImportDbContext())
+            {
+              await dbContext.UpdateFromDataTable(m_readdata.ProductData, UpdateProcess);
+            }
+            panel1.Enabled= true;
         }
     }
 }
