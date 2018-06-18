@@ -61,7 +61,10 @@ namespace Exportdataprocessing
                 JArray ja = (JArray)JsonConvert.DeserializeObject(str);
                 foreach (var item in ja)
                 {
-                    lstrtn.Add(new ParamInfo(item["label"].ToString(), item["value"].ToString()));
+                    if(lstrtn.Find(e=> e.Paramname == item["label"].ToString())==null)
+                    {
+                        lstrtn.Add(new ParamInfo(item["label"].ToString(), item["value"].ToString()));
+                    }
                 }
             }
             catch (Exception)
@@ -83,9 +86,12 @@ namespace Exportdataprocessing
                     {
                         string strdesc = value["desc"].ToString();
                         string imageuri = value["image"]?.ToString();
-                        if (!string.IsNullOrEmpty(strdesc))
+                        if (lstrtn.Find(e => e.Paramname == strdesc) == null)
                         {
-                            lstrtn.Add(new SKUInfo(strdesc, imageuri));
+                            if (!string.IsNullOrEmpty(strdesc))
+                            {
+                                lstrtn.Add(new SKUInfo(strdesc, imageuri));
+                            }
                         }
                     }
                 }

@@ -175,10 +175,8 @@ namespace Exportdataprocessing
                 return;
             }
             panel1.Enabled = false;
-            using (ImportDbContext dbContext = new ImportDbContext())
-            {
-              await dbContext.UpdateFromDataTable(m_readdata.ProductData, UpdateProcess);
-            }
+            ImportDbContext dbContext = new ImportDbContext();
+            await dbContext.UpdateFromDataTable(m_readdata.ProductData, UpdateProcess);
             panel1.Enabled= true;
         }
     }

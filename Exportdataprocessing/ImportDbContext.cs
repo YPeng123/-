@@ -28,10 +28,10 @@ namespace Exportdataprocessing
                     {
                         string id = row[parserow.id].ToString();
                         UpdateProductTable(row);
-
+                        this.SaveChanges();
                         var lst = parserow.ParamParamInfo(row);
                         //this.Database.ExecuteSqlCommand("delete from yiyilandb.dbo.productparams where id={0}", id);
-
+                       
                         foreach (var param in this.productparams.Where(e => e.id == id))
                         {
                             this.productparams.Remove(param);
@@ -45,6 +45,8 @@ namespace Exportdataprocessing
                             tmp.paramvalue = paraminfo.Value;
                             this.productparams.Add(tmp);
                         }
+                        this.SaveChanges();
+
 
                         var lstsku = parserow.ParamSkuInfo(row);
 
@@ -60,6 +62,7 @@ namespace Exportdataprocessing
                             tmp.imageurl = item.Value;
                             this.productskus.Add(tmp);
                         }
+                        this.SaveChanges();
 
                         List<string> lstimages;
                         List<string> lstdetails;
@@ -179,7 +182,7 @@ namespace Exportdataprocessing
                 {
                     this.products.Add(pro);
                 }
-                //this.SaveChanges();
+                this.SaveChanges();
             }
             catch (Exception e)
             {
