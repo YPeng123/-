@@ -8,10 +8,9 @@ using System.Threading.Tasks;
 namespace Exportdataprocessing
 {
     delegate void dgtprogress(int curindex, int total);
-    class ImportDbContext : YIyilanDatabaseContainer
+    class ImportDbContext
     {
         public ImportDbContext()
-            : base()
         {
         }
         public async Task<bool> UpdateFromDataTable(DataTable dt, dgtprogress func)
@@ -26,74 +25,76 @@ namespace Exportdataprocessing
                     func?.Invoke(curindex, total);
                     try
                     {
-                        string id = row[parserow.id].ToString();
-                        UpdateProductTable(row);
-                        this.SaveChanges();
-                        var lst = parserow.ParamParamInfo(row);
-                        //this.Database.ExecuteSqlCommand("delete from yiyilandb.dbo.productparams where id={0}", id);
-                       
-                        foreach (var param in this.productparams.Where(e => e.id == id))
+                        using (YIyilanDatabaseContainer dbcontext = new YIyilanDatabaseContainer())
                         {
-                            this.productparams.Remove(param);
-                        }
+                            string id = row[parserow.id].ToString();
+                            if(!UpdateProductTable(dbcontext, row))
+                            {
+                                continue;
+                            }
+                            
+                            var lst = parserow.ParamParamInfo(row);
+                            //this.Database.ExecuteSqlCommand("delete from yiyilandb.dbo.productparams where id={0}", id);
 
-                        foreach (var paraminfo in lst)
-                        {
-                            var tmp = new productparams();
-                            tmp.id = id;
-                            tmp.paramlabel = paraminfo.Paramname;
-                            tmp.paramvalue = paraminfo.Value;
-                            this.productparams.Add(tmp);
-                        }
-                        this.SaveChanges();
+                            foreach (var param in dbcontext.productparams.Where(e => e.id == id))
+                            {
+                                dbcontext.productparams.Remove(param);
+                            }
 
+                            foreach (var paraminfo in lst)
+                            {
+                                var tmp = new productparams();
+                                tmp.id = id;
+                                tmp.paramlabel = paraminfo.Paramname;
+                                tmp.paramvalue = paraminfo.Value;
+                                dbcontext.productparams.Add(tmp);
+                            }
 
-                        var lstsku = parserow.ParamSkuInfo(row);
+                            var lstsku = parserow.ParamSkuInfo(row);
 
-                        foreach (var param in this.productskus.Where(e => e.id == id))
-                        {
-                            this.productskus.Remove(param);
-                        }
-                        foreach (var item in lstsku)
-                        {
-                            var tmp = new productskus();
-                            tmp.id = id;
-                            tmp.skname = item.Paramname;
-                            tmp.imageurl = item.Value;
-                            this.productskus.Add(tmp);
-                        }
-                        this.SaveChanges();
+                            foreach (var param in dbcontext.productskus.Where(e => e.id == id))
+                            {
+                                dbcontext.productskus.Remove(param);
+                            }
+                            foreach (var item in lstsku)
+                            {
+                                var tmp = new productskus();
+                                tmp.id = id;
+                                tmp.skname = item.Paramname;
+                                tmp.imageurl = item.Value;
+                                dbcontext.productskus.Add(tmp);
+                            }
 
-                        List<string> lstimages;
-                        List<string> lstdetails;
-                        parserow.ParamImage(row, out lstimages, out lstdetails);
-                        StringBuilder sb = new StringBuilder();
-                        foreach (var item in lstimages)
-                        {
-                            sb.AppendFormat("{0}|", item);
+                            List<string> lstimages;
+                            List<string> lstdetails;
+                            parserow.ParamImage(row, out lstimages, out lstdetails);
+                            StringBuilder sb = new StringBuilder();
+                            foreach (var item in lstimages)
+                            {
+                                sb.AppendFormat("{0}|", item);
+                            }
+                            string images = sb.ToString();
+                            sb.Clear();
+                            foreach (var item in lstdetails)
+                            {
+                                sb.AppendFormat("{0}|", item);
+                            }
+                            string details = sb.ToString();
+                            foreach (var param in dbcontext.imagedetail.Where(e => e.id == id))
+                            {
+                                dbcontext.imagedetail.Remove(param);
+                            }
+                            var imagedetailinfo = new imagedetail();
+                            imagedetailinfo.id = id;
+                            imagedetailinfo.images = images;
+                            imagedetailinfo.details = details;
+                            dbcontext.imagedetail.Add(imagedetailinfo);
+                            dbcontext.SaveChanges();
                         }
-                        string images = sb.ToString();
-                        sb.Clear();
-                        foreach (var item in lstdetails)
-                        {
-                            sb.AppendFormat("{0}|", item);
-                        }
-                        string details = sb.ToString();
-                        foreach (var param in this.imagedetail.Where(e => e.id == id))
-                        {
-                            this.imagedetail.Remove(param);
-                        }
-                        var imagedetailinfo = new imagedetail();
-                        imagedetailinfo.id = id;
-                        imagedetailinfo.images = images;
-                        imagedetailinfo.details = details;
-                        this.imagedetail.Add(imagedetailinfo);
-                        this.SaveChanges();
                     }
                     catch (Exception e)
                     {
                     }
-
                 }
             });
             return true;
@@ -121,7 +122,7 @@ namespace Exportdataprocessing
             }
 
         }
-        private void UpdateProductTable(DataRow row)
+        private bool UpdateProductTable(YIyilanDatabaseContainer dbcontext, DataRow row)
         {
             try
             {
@@ -147,7 +148,7 @@ namespace Exportdataprocessing
                 string score = row[parserow.score].ToString();
 
                 bool isnew = false;
-                products pro = this.products.Find(id);
+                products pro = dbcontext.products.Find(id);
                 if (pro == null)
                 {
                     pro = new products();
@@ -180,12 +181,14 @@ namespace Exportdataprocessing
                 pro.score = decimal.Parse(score);
                 if (isnew)
                 {
-                    this.products.Add(pro);
+                    dbcontext.products.Add(pro);
                 }
-                this.SaveChanges();
+                dbcontext.SaveChanges();
+                return true;
             }
             catch (Exception e)
             {
+                return false;
             }
         }
 

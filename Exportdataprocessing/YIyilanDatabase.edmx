@@ -30,7 +30,7 @@
           <Property Name="id" Type="nchar" MaxLength="64" Nullable="false" />
           <Property Name="title" Type="nchar" MaxLength="128" />
           <Property Name="description" Type="nchar" MaxLength="128" />
-          <Property Name="params" Type="nchar" MaxLength="1024" />
+          <Property Name="params" Type="text" />
           <Property Name="current_price_min" Type="numeric" Precision="18" Scale="0" />
           <Property Name="current_price_max" Type="numeric" Precision="18" Scale="0" />
           <Property Name="original_price_min" Type="numeric" Precision="18" Scale="0" />
@@ -106,7 +106,7 @@
           <Property Name="id" Type="String" Nullable="false" MaxLength="64" FixedLength="true" Unicode="true" />
           <Property Name="title" Type="String" MaxLength="128" FixedLength="true" Unicode="true" />
           <Property Name="description" Type="String" MaxLength="128" FixedLength="true" Unicode="true" />
-          <Property Name="params" Type="String" MaxLength="1024" FixedLength="true" Unicode="true" />
+          <Property Name="params" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="month_sales_count" Type="Int32" />
           <Property Name="stock" Type="Int32" />
           <Property Name="skunumber" Type="Int32" />
